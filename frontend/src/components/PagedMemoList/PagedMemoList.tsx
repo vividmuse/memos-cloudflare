@@ -58,7 +58,9 @@ const PagedMemoList = observer((props: Props) => {
         pageToken,
       };
       if (props.owner) {
-        fetchParams.parent = props.owner;
+        // 将 owner 格式 "users/1" 转换为后端API期望的 creatorId "1"
+        const creatorId = props.owner.replace('users/', '');
+        fetchParams.creatorId = creatorId;
       }
       const response = await memoStore.fetchMemos(fetchParams);
       setNextPageToken(response?.nextPageToken || "");

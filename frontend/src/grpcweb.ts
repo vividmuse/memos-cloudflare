@@ -243,16 +243,49 @@ function parseMarkdownToNodes(markdown: string): any[] {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     
+    // 代码块处理
+    if (line.trim().startsWith('```')) {
+      const language = line.trim().substring(3);
+      const codeLines = [];
+      i++; // 跳过开始的```行
+      
+      while (i < lines.length && !lines[i].trim().startsWith('```')) {
+        codeLines.push(lines[i]);
+        i++;
+      }
+      
+      nodes.push({
+        type: 'CODE_BLOCK',
+        codeBlockNode: {
+          language: language,
+          content: codeLines.join('\n')
+        }
+      });
+      continue;
+    }
+    
     // 任务列表项
     if (/^(\s*)- \[([ xX])\] (.*)/.test(line)) {
       const match = line.match(/^(\s*)- \[([ xX])\] (.*)/);
       if (match) {
+        const indent = Math.floor(match[1].length / 2);
+        const isComplete = match[2].toLowerCase() === 'x';
+        const content = match[3];
+        
         nodes.push({
           type: 'TASK_LIST_ITEM',
           taskListItemNode: {
             symbol: '-',
-            complete: match[2].toLowerCase() === 'x',
-            content: match[3]
+            indent: indent,
+            complete: isComplete,
+            children: [
+              {
+                type: 'TEXT',
+                textNode: {
+                  content: content
+                }
+              }
+            ]
           }
         });
       }
@@ -261,11 +294,20 @@ function parseMarkdownToNodes(markdown: string): any[] {
     else if (/^(\s*)- (.*)/.test(line)) {
       const match = line.match(/^(\s*)- (.*)/);
       if (match) {
+        const indent = Math.floor(match[1].length / 2);
         nodes.push({
           type: 'UNORDERED_LIST_ITEM',
           unorderedListItemNode: {
             symbol: '-',
-            content: match[2]
+            indent: indent,
+            children: [
+              {
+                type: 'TEXT',
+                textNode: {
+                  content: match[2]
+                }
+              }
+            ]
           }
         });
       }
@@ -274,11 +316,73 @@ function parseMarkdownToNodes(markdown: string): any[] {
     else if (/^(\s*)(\d+)\. (.*)/.test(line)) {
       const match = line.match(/^(\s*)(\d+)\. (.*)/);
       if (match) {
+        const indent = Math.floor(match[1].length / 2);
         nodes.push({
           type: 'ORDERED_LIST_ITEM',
           orderedListItemNode: {
             number: match[2],
-            content: match[3]
+            indent: indent,
+            children: [
+              {
+                type: 'TEXT',
+                textNode: {
+                  content: match[3]
+                }
+              }
+            ]
+          }
+        });
+      }
+    }
+    // 标题
+    else if (/^#{1,6} (.*)/.test(line)) {
+      const match = line.match(/^(#{1,6}) (.*)/);
+      if (match) {
+        nodes.push({
+          type: 'HEADING',
+          headingNode: {
+            level: match[1].length,
+            children: [
+              {
+                type: 'TEXT',
+                textNode: {
+                  content: match[2]
+                }
+              }
+            ]
+          }
+        });
+      }
+    }
+    // 行内代码
+    else if (/`([^`]+)`/.test(line)) {
+      // 这是一个简化处理，实际应该更复杂地解析行内元素
+      const parts = line.split(/(`[^`]+`)/);
+      const textChildren = [];
+      
+      for (const part of parts) {
+        if (part.startsWith('`') && part.endsWith('`')) {
+          textChildren.push({
+            type: 'CODE',
+            codeNode: {
+              content: part.slice(1, -1)
+            }
+          });
+        } else if (part.trim()) {
+          textChildren.push({
+            type: 'TEXT',
+            textNode: {
+              content: part
+            }
+          });
+        }
+      }
+      
+      if (textChildren.length > 0) {
+        nodes.push({
+          type: 'PARAGRAPH',
+          paragraphNode: {
+            children: textChildren
           }
         });
       }
@@ -286,9 +390,16 @@ function parseMarkdownToNodes(markdown: string): any[] {
     // 普通文本
     else if (line.trim()) {
       nodes.push({
-        type: 'TEXT',
-        textNode: {
-          content: line
+        type: 'PARAGRAPH',
+        paragraphNode: {
+          children: [
+            {
+              type: 'TEXT',
+              textNode: {
+                content: line
+              }
+            }
+          ]
         }
       });
     }
@@ -310,30 +421,103 @@ function restoreNodesToMarkdown(nodes: any[]): string {
   for (const node of nodes) {
     switch (node.type) {
       case 'TASK_LIST_ITEM':
-        const checkbox = node.taskListItemNode?.complete ? '[x]' : '[ ]';
-        lines.push(`- ${checkbox} ${node.taskListItemNode?.content || ''}`);
+        if (node.taskListItemNode) {
+          const indent = '  '.repeat(node.taskListItemNode.indent || 0);
+          const checkbox = node.taskListItemNode.complete ? '[x]' : '[ ]';
+          const content = extractTextFromChildren(node.taskListItemNode.children || []);
+          lines.push(`${indent}- ${checkbox} ${content}`);
+        }
         break;
+        
       case 'UNORDERED_LIST_ITEM':
-        lines.push(`- ${node.unorderedListItemNode?.content || ''}`);
+        if (node.unorderedListItemNode) {
+          const indent = '  '.repeat(node.unorderedListItemNode.indent || 0);
+          const content = extractTextFromChildren(node.unorderedListItemNode.children || []);
+          lines.push(`${indent}- ${content}`);
+        }
         break;
+        
       case 'ORDERED_LIST_ITEM':
-        lines.push(`${node.orderedListItemNode?.number || 1}. ${node.orderedListItemNode?.content || ''}`);
+        if (node.orderedListItemNode) {
+          const indent = '  '.repeat(node.orderedListItemNode.indent || 0);
+          const content = extractTextFromChildren(node.orderedListItemNode.children || []);
+          lines.push(`${indent}${node.orderedListItemNode.number}. ${content}`);
+        }
         break;
+        
+      case 'CODE_BLOCK':
+        if (node.codeBlockNode) {
+          lines.push(`\`\`\`${node.codeBlockNode.language || ''}`);
+          lines.push(node.codeBlockNode.content || '');
+          lines.push('```');
+        }
+        break;
+        
+      case 'HEADING':
+        if (node.headingNode) {
+          const level = '#'.repeat(node.headingNode.level || 1);
+          const content = extractTextFromChildren(node.headingNode.children || []);
+          lines.push(`${level} ${content}`);
+        }
+        break;
+        
+      case 'PARAGRAPH':
+        if (node.paragraphNode) {
+          const content = extractTextFromChildren(node.paragraphNode.children || []);
+          lines.push(content);
+        }
+        break;
+        
       case 'TEXT':
-        lines.push(node.textNode?.content || '');
+        if (node.textNode) {
+          lines.push(node.textNode.content || '');
+        }
         break;
+        
       case 'LINE_BREAK':
         lines.push('');
         break;
+        
       default:
-        // 对于不识别的节点类型，尝试保留原始内容
-        if (node.content) {
-          lines.push(node.content);
+        // 对于其他类型，尝试提取文本内容
+        if (node.textNode) {
+          lines.push(node.textNode.content || '');
         }
+        break;
     }
   }
   
   return lines.join('\n');
+}
+
+// 辅助函数：从children节点中提取文本内容
+function extractTextFromChildren(children: any[]): string {
+  const textParts: string[] = [];
+  
+  for (const child of children) {
+    switch (child.type) {
+      case 'TEXT':
+        if (child.textNode) {
+          textParts.push(child.textNode.content || '');
+        }
+        break;
+      case 'CODE':
+        if (child.codeNode) {
+          textParts.push(`\`${child.codeNode.content || ''}\``);
+        }
+        break;
+      default:
+        // 对于其他类型，尝试递归提取
+        if (child.children) {
+          textParts.push(extractTextFromChildren(child.children));
+        } else if (child.textNode) {
+          textParts.push(child.textNode.content || '');
+        }
+        break;
+    }
+  }
+  
+  return textParts.join('');
 }
 
 export const identityProviderServiceClient = {

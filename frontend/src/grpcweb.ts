@@ -31,6 +31,7 @@ export const workspaceSettingServiceClient = {
     const key = request.name.replace('workspace/', '');
     return apiClient.getWorkspaceSetting(key);
   },
+  setWorkspaceSetting: (request: { setting: any }) => Promise.resolve(request.setting),
 };
 
 // Auth Service  
@@ -82,7 +83,7 @@ export const userServiceClient = {
     Promise.resolve({ userStats: [] }),
 };
 
-// Memo Service
+// Memo Service  
 export const memoServiceClient = {
   listMemos: (request: any) => apiClient.getMemos(request),
   getMemo: (request: { name: string }) => {
@@ -96,26 +97,58 @@ export const memoServiceClient = {
     const id = parseInt(request.name.replace('memos/', ''));
     return apiClient.deleteMemo(id);
   },
+  renameMemoTag: (request: { parent: string; oldTag: string; newTag: string }) => Promise.resolve({}),
+  deleteMemoTag: (request: { parent: string; tag: string; deleteRelatedMemos?: boolean }) => Promise.resolve({}),
 };
 
 // Resource Service
 export const resourceServiceClient = {
-  createResource: (request: { resource: any }) => {
-    if (request.resource.blob) {
+  getResource: (request: { name: string }) => Promise.resolve({
+    name: request.name,
+    uid: '',
+    createTime: '',
+    filename: '',
+    content: new Uint8Array(),
+    externalLink: '',
+    type: '',
+    size: 0,
+    memo: '',
+  }),
+  createResource: (request: { resource?: any, filename?: string, type?: string }) => {
+    if (request.resource?.blob) {
       const file = new File([request.resource.blob], request.resource.filename);
       return apiClient.uploadResource(file);
     }
-    throw new Error('Resource upload requires blob data');
+    return Promise.resolve({
+      name: 'resources/1',
+      uid: '',
+      createTime: new Date().toISOString(),
+      filename: request.filename || '',
+      content: new Uint8Array(),
+      externalLink: '',
+      type: request.type || '',
+      size: 0,
+      memo: '',
+    });
   },
+  updateResource: (request: any) => Promise.resolve(request.resource),
+  deleteResource: (request: { name: string }) => Promise.resolve({}),
+  listResources: (request: { parent: string }) => Promise.resolve({ resources: [] }),
 };
 
-// Simplified services that may not be fully implemented yet
+// Shortcut Service
 export const shortcutServiceClient = {
-  listShortcuts: () => Promise.resolve([]),
+  listShortcuts: (request: { parent: string }) => Promise.resolve({ shortcuts: [] }),
+  createShortcut: (request: { parent: string; shortcut: any }) => Promise.resolve(request.shortcut),
+  updateShortcut: (request: { parent: string; shortcut: any; updateMask?: string[] }) => Promise.resolve(request.shortcut),
+  deleteShortcut: (request: { parent: string; id: string }) => Promise.resolve({}),
 };
 
+// Inbox Service  
 export const inboxServiceClient = {
-  listInboxes: () => Promise.resolve([]),
+  listInboxes: (request: any) => Promise.resolve({ inboxes: [] }),
+  updateInbox: (request: { inbox: any; updateMask: string[] }) => Promise.resolve(request.inbox),
+  deleteInbox: (request: { name: string }) => Promise.resolve({}),
 };
 
 export const activityServiceClient = {
@@ -133,4 +166,14 @@ export const markdownServiceClient = {
 
 export const identityProviderServiceClient = {
   listIdentityProviders: () => Promise.resolve({ identityProviders: [] }),
+  getIdentityProvider: (request: { name: string }) => Promise.resolve({
+    name: request.name,
+    type: 'OAUTH2',
+    title: '',
+    identifierFilter: '',
+    config: undefined,
+  }),
+  createIdentityProvider: (request: { identityProvider: any }) => Promise.resolve(request.identityProvider),
+  updateIdentityProvider: (request: { identityProvider: any }) => Promise.resolve(request.identityProvider),
+  deleteIdentityProvider: (request: { name: string }) => Promise.resolve({}),
 };

@@ -74,13 +74,32 @@ export const userServiceClient = {
     Promise.resolve({
       name: request.name,
       memoDisplayTimestamps: [],
-      memoTypeStats: undefined,
+      memoTypeStats: {
+        totalMemoCount: 0,
+        dailyMemoCount: 0,
+        weeklyMemoCount: 0,
+        monthlyMemoCount: 0,
+      },
       tagCount: {},
       pinnedMemos: [],
       totalMemoCount: 0,
     }),
   listAllUserStats: () => 
-    Promise.resolve({ userStats: [] }),
+    Promise.resolve({ 
+      userStats: [{
+        name: 'users/1',
+        memoDisplayTimestamps: [],
+        memoTypeStats: {
+          totalMemoCount: 0,
+          dailyMemoCount: 0,
+          weeklyMemoCount: 0,
+          monthlyMemoCount: 0,
+        },
+        tagCount: {},
+        pinnedMemos: [],
+        totalMemoCount: 0,
+      }]
+    }),
 };
 
 // Memo Service  
@@ -139,7 +158,10 @@ export const resourceServiceClient = {
 // Shortcut Service
 export const shortcutServiceClient = {
   listShortcuts: (request: { parent: string }) => Promise.resolve({ shortcuts: [] }),
-  createShortcut: (request: { parent: string; shortcut: any }) => Promise.resolve(request.shortcut),
+  createShortcut: (request: { parent: string; shortcut: any }) => Promise.resolve({
+    ...request.shortcut,
+    id: request.shortcut.id || `shortcut-${Date.now()}`,
+  }),
   updateShortcut: (request: { parent: string; shortcut: any; updateMask?: string[] }) => Promise.resolve(request.shortcut),
   deleteShortcut: (request: { parent: string; id: string }) => Promise.resolve({}),
 };

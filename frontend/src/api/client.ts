@@ -233,17 +233,34 @@ class ApiClient {
 
   private getDefaultSetting(key: string) {
     const defaults: Record<string, any> = {
-      'general': {
-        instanceUrl: this.baseUrl,
-        disallowSignup: false,
-        disallowPasswordLogin: false,
+      'GENERAL': {
+        disallowUserRegistration: false,
+        disallowPasswordAuth: false,
         additionalScript: '',
         additionalStyle: '',
+        customProfile: {
+          title: 'Memos',
+          description: 'A privacy-first, lightweight note-taking service',
+          logoUrl: '',
+          locale: 'en',
+          appearance: 'auto',
+        },
+        weekStartDayOffset: 0,
+        disallowChangeUsername: false,
+        disallowChangeNickname: false,
       },
-      'storage': {
+      'STORAGE': {
         storageType: 'DATABASE',
         filepathTemplate: '{{filename}}',
         uploadSizeLimitMb: 32,
+        s3Config: undefined,
+      },
+      'MEMO_RELATED': {
+        disallowPublicVisibility: false,
+        displayWithUpdateTime: false,
+        contentLengthLimit: 1000,
+        autoCollapse: false,
+        defaultVisibility: 'PRIVATE',
       },
     };
     return defaults[key] || {};

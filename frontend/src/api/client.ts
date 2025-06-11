@@ -13,8 +13,8 @@ const getApiBaseUrl = () => {
   }
   
   // 如果是生产环境且在 Pages 上，尝试使用后端 Workers URL
-  if (window.location.hostname === 'memos-cloudflare.pages.dev') {
-    return 'https://memos-cloudflare.yourmin.workers.dev';
+  if (window.location.hostname === 'memos-cloudflare.pages.dev' || window.location.hostname === 'memos.51min.win') {
+    return 'https://memos-api.51min.win';
   }
   
   // 开发环境或其他情况，使用相对路径
@@ -80,10 +80,17 @@ class ApiClient {
 
   // Auth Services
   async signIn(username: string, password: string) {
-    return this.request('/api/auth/signin', {
+    const response = await this.request<{ token?: string, user?: any }>('/api/auth/signin', {
       method: 'POST',
       body: JSON.stringify({ username, password }),
     });
+    
+    // 保存 token 到 localStorage
+    if (response.token) {
+      localStorage.setItem('accessToken', response.token);
+    }
+    
+    return response;
   }
 
   async signUp(username: string, password: string, email?: string) {
@@ -102,10 +109,24 @@ class ApiClient {
     return this.request(`/api/user/${id}`);
   }
 
+  async getUserByUsername(username: string) {
+    return this.request(`/api/user/username/${username}`);
+  }
+
+  async listUsers() {
+    return this.request('/api/user');
+  }
+
   async updateUser(id: number, data: any) {
     return this.request(`/api/user/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
+    });
+  }
+
+  async deleteUser(id: number) {
+    return this.request(`/api/user/${id}`, {
+      method: 'DELETE',
     });
   }
 

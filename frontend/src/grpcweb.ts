@@ -43,6 +43,7 @@ export const authServiceClient = {
   },
   signUp: (request: { username: string; password: string; email?: string }) =>
     apiClient.signUp(request.username, request.password, request.email),
+  getAuthStatus: () => apiClient.getCurrentUser(),
 };
 
 // User Service
@@ -52,8 +53,33 @@ export const userServiceClient = {
     const id = parseInt(request.name.replace('users/', ''));
     return apiClient.getUser(id);
   },
+  getUserByUsername: (request: { username: string }) => apiClient.getUserByUsername(request.username),
+  listUsers: () => apiClient.listUsers(),
   updateUser: (request: { user: any; updateMask: any }) =>
     apiClient.updateUser(request.user.id, request.user),
+  deleteUser: (request: { name: string }) => {
+    const id = parseInt(request.name.replace('users/', ''));
+    return apiClient.deleteUser(id);
+  },
+  getUserSetting: () => 
+    Promise.resolve({
+      locale: 'zh',
+      appearance: 'system',
+      memoVisibility: 'PRIVATE',
+    }),
+  updateUserSetting: (request: { setting: any; updateMask: string[] }) =>
+    Promise.resolve(request.setting),
+  getUserStats: (request: { name: string }) => 
+    Promise.resolve({
+      name: request.name,
+      memoDisplayTimestamps: [],
+      memoTypeStats: undefined,
+      tagCount: {},
+      pinnedMemos: [],
+      totalMemoCount: 0,
+    }),
+  listAllUserStats: () => 
+    Promise.resolve({ userStats: [] }),
 };
 
 // Memo Service

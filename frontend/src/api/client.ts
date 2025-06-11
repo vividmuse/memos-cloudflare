@@ -1,5 +1,7 @@
 // REST API Client for Cloudflare Workers Backend
 
+import { NodeType } from '@/types/proto/api/v1/markdown_service';
+
 // 获取 API 基础 URL，优先级：环境变量 > 同域名下的 /api > 默认后端地址
 const getApiBaseUrl = () => {
   // 如果设置了环境变量，使用环境变量
@@ -135,6 +137,58 @@ class ApiClient {
     });
   }
 
+  // Helper function to convert plain text to nodes structure
+  private convertContentToNodes(content: string) {
+    if (!content || content.trim() === '') {
+      return [];
+    }
+
+    // Split content by paragraphs (double newlines)
+    const paragraphs = content.split(/\n\s*\n/).filter(p => p.trim());
+    
+    const nodes = [];
+    
+    for (const paragraph of paragraphs) {
+      const children = [];
+
+      // Split paragraph by single newlines for line breaks
+      const lines = paragraph.split('\n');
+      
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (line) {
+          // Add text node
+          children.push({
+            type: NodeType.TEXT,
+            textNode: {
+              content: line
+            }
+          });
+        }
+        
+        // Add line break if not the last line
+        if (i < lines.length - 1) {
+          children.push({
+            type: NodeType.LINE_BREAK,
+            lineBreakNode: {}
+          });
+        }
+      }
+
+      // Create a paragraph node
+      if (children.length > 0) {
+        nodes.push({
+          type: NodeType.PARAGRAPH,
+          paragraphNode: {
+            children: children
+          }
+        });
+      }
+    }
+
+    return nodes;
+  }
+
   // Memo Services
   async getMemos(params: any = {}) {
     const searchParams = new URLSearchParams(params);
@@ -146,7 +200,7 @@ class ApiClient {
       uid: memo.uid || `memo-uid-${memo.id}`,
       creator: `users/${memo.creatorId}`,
       content: memo.content || '',
-      nodes: [], // TODO: 如果需要的话，解析markdown内容为节点
+      nodes: this.convertContentToNodes(memo.content || ''),
       visibility: memo.visibility || 'PRIVATE',
       tags: memo.tags || [],
       pinned: memo.pinned || false,
@@ -180,7 +234,7 @@ class ApiClient {
       uid: memo.uid || `memo-uid-${memo.id}`,
       creator: `users/${memo.creatorId}`,
       content: memo.content || '',
-      nodes: [], // TODO: 如果需要的话，解析markdown内容为节点
+      nodes: this.convertContentToNodes(memo.content || ''),
       visibility: memo.visibility || 'PRIVATE',
       tags: memo.tags || [],
       pinned: memo.pinned || false,
@@ -198,10 +252,32 @@ class ApiClient {
   }
 
   async createMemo(data: any) {
-    return this.request('/api/memo', {
+    const memo = await this.request<any>('/api/memo', {
       method: 'POST',
       body: JSON.stringify(data),
     });
+    
+    // 转换为前端期望的protobuf格式
+    return {
+      name: `memos/${memo.id}`,
+      uid: memo.uid || `memo-uid-${memo.id}`,
+      creator: `users/${memo.creatorId}`,
+      content: memo.content || '',
+      nodes: this.convertContentToNodes(memo.content || ''),
+      visibility: memo.visibility || 'PRIVATE',
+      tags: memo.tags || [],
+      pinned: memo.pinned || false,
+      resources: memo.resourceIdList || [],
+      relations: memo.relations || [],
+      reactions: memo.reactions || [],
+      snippet: memo.content ? memo.content.slice(0, 100) : '',
+      parent: memo.parent || '',
+      createTime: memo.createdTs ? new Date(memo.createdTs * 1000) : new Date(),
+      updateTime: memo.updatedTs ? new Date(memo.updatedTs * 1000) : new Date(),
+      displayTime: memo.createdTs ? new Date(memo.createdTs * 1000) : new Date(),
+      state: memo.rowStatus === 'ARCHIVED' ? 'ARCHIVED' : 'NORMAL',
+      location: memo.location || undefined,
+    };
   }
 
   async updateMemo(id: number, data: any) {

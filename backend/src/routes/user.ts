@@ -209,6 +209,24 @@ userRoutes.get('/:id/setting', async (c) => {
       return c.json({ message: 'Forbidden' }, 403);
     }
 
+    // 确保user_setting表存在
+    try {
+      await c.env.DB.prepare(`
+        CREATE TABLE IF NOT EXISTS user_setting (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL,
+          locale TEXT NOT NULL DEFAULT 'zh',
+          appearance TEXT NOT NULL DEFAULT 'system',
+          memo_visibility TEXT NOT NULL DEFAULT 'PRIVATE',
+          created_ts INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+          updated_ts INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+          FOREIGN KEY (user_id) REFERENCES user (id) ON DELETE CASCADE
+        )
+      `).run();
+    } catch (createTableError) {
+      console.log('Table creation skipped (may already exist):', createTableError);
+    }
+
     // 获取用户设置，如果不存在则返回默认值
     let userSetting = await c.env.DB.prepare(
       'SELECT * FROM user_setting WHERE user_id = ?'
@@ -239,9 +257,9 @@ userRoutes.get('/:id/setting', async (c) => {
       memoVisibility: userSetting.memo_visibility
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Get user setting error:', error);
-    return c.json({ message: 'Internal server error' }, 500);
+    return c.json({ message: 'Internal server error', details: error.message }, 500);
   }
 });
 

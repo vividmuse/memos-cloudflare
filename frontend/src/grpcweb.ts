@@ -28,10 +28,11 @@ export const workspaceServiceClient = {
 
 export const workspaceSettingServiceClient = {
   getWorkspaceSetting: (request: { name: string }) => {
-    const key = request.name.replace('workspace/', '');
-    return apiClient.getWorkspaceSetting(key);
+    return apiClient.getWorkspaceSetting(request.name);
   },
-  setWorkspaceSetting: (request: { setting: any }) => Promise.resolve(request.setting),
+  setWorkspaceSetting: (request: { setting: any }) => {
+    return apiClient.setWorkspaceSetting(request.setting);
+  },
 };
 
 // Auth Service  
@@ -123,7 +124,26 @@ export const memoServiceClient = {
   },
   createMemo: (request: { memo: any }) => apiClient.createMemo(request.memo),
   updateMemo: (request: { memo: any; updateMask: any }) => {
-    const id = parseInt(request.memo.name.replace('memos/', ''));
+    console.log('🔄 updateMemo request:', request);
+    
+    if (!request.memo || !request.memo.name) {
+      throw new Error('Memo name is required for update');
+    }
+    
+    const memoName = request.memo.name;
+    console.log('📝 Memo name:', memoName);
+    
+    // 提取ID，添加更严格的验证
+    const idString = memoName.replace('memos/', '');
+    const id = parseInt(idString, 10);
+    
+    console.log('🔢 Extracted ID string:', idString);
+    console.log('🔢 Parsed ID:', id);
+    
+    if (isNaN(id) || id <= 0) {
+      throw new Error(`Invalid memo ID: ${idString} from name: ${memoName}`);
+    }
+    
     return apiClient.updateMemo(id, request.memo);
   },
   deleteMemo: (request: { name: string }) => {
@@ -196,9 +216,125 @@ export const webhookServiceClient = {
 };
 
 export const markdownServiceClient = {
-  parseMarkdown: (request: { markdown: string }) => 
-    Promise.resolve({ nodes: [] }),
+  parseMarkdown: (request: { markdown: string }) => {
+    // 这是一个简化版的markdown解析器
+    // 在实际生产环境中，应该使用后端的markdown解析服务
+    const nodes = parseMarkdownToNodes(request.markdown);
+    return Promise.resolve({ nodes });
+  },
+  restoreMarkdownNodes: (request: { nodes: any[] }) => {
+    // 这是一个简化版的节点还原为markdown的功能
+    const markdown = restoreNodesToMarkdown(request.nodes);
+    return Promise.resolve({ markdown });
+  },
+  getLinkMetadata: (request: { link: string }) =>
+    Promise.resolve({
+      title: request.link,
+      description: '',
+      image: '',
+    }),
 };
+
+// 简化版markdown解析器
+function parseMarkdownToNodes(markdown: string): any[] {
+  const lines = markdown.split('\n');
+  const nodes: any[] = [];
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    
+    // 任务列表项
+    if (/^(\s*)- \[([ xX])\] (.*)/.test(line)) {
+      const match = line.match(/^(\s*)- \[([ xX])\] (.*)/);
+      if (match) {
+        nodes.push({
+          type: 'TASK_LIST_ITEM',
+          taskListItemNode: {
+            symbol: '-',
+            complete: match[2].toLowerCase() === 'x',
+            content: match[3]
+          }
+        });
+      }
+    }
+    // 普通列表项
+    else if (/^(\s*)- (.*)/.test(line)) {
+      const match = line.match(/^(\s*)- (.*)/);
+      if (match) {
+        nodes.push({
+          type: 'UNORDERED_LIST_ITEM',
+          unorderedListItemNode: {
+            symbol: '-',
+            content: match[2]
+          }
+        });
+      }
+    }
+    // 有序列表项
+    else if (/^(\s*)(\d+)\. (.*)/.test(line)) {
+      const match = line.match(/^(\s*)(\d+)\. (.*)/);
+      if (match) {
+        nodes.push({
+          type: 'ORDERED_LIST_ITEM',
+          orderedListItemNode: {
+            number: match[2],
+            content: match[3]
+          }
+        });
+      }
+    }
+    // 普通文本
+    else if (line.trim()) {
+      nodes.push({
+        type: 'TEXT',
+        textNode: {
+          content: line
+        }
+      });
+    }
+    // 换行
+    else {
+      nodes.push({
+        type: 'LINE_BREAK'
+      });
+    }
+  }
+  
+  return nodes;
+}
+
+// 简化版节点还原为markdown
+function restoreNodesToMarkdown(nodes: any[]): string {
+  const lines: string[] = [];
+  
+  for (const node of nodes) {
+    switch (node.type) {
+      case 'TASK_LIST_ITEM':
+        const checkbox = node.taskListItemNode?.complete ? '[x]' : '[ ]';
+        lines.push(`- ${checkbox} ${node.taskListItemNode?.content || ''}`);
+        break;
+      case 'UNORDERED_LIST_ITEM':
+        lines.push(`- ${node.unorderedListItemNode?.content || ''}`);
+        break;
+      case 'ORDERED_LIST_ITEM':
+        lines.push(`${node.orderedListItemNode?.number || 1}. ${node.orderedListItemNode?.content || ''}`);
+        break;
+      case 'TEXT':
+        lines.push(node.textNode?.content || '');
+        break;
+      case 'LINE_BREAK':
+        lines.push('');
+        break;
+      default:
+        // 对于不识别的节点类型，尝试保留原始内容
+        if (node.content) {
+          lines.push(node.content);
+        }
+    }
+  }
+  
+  return lines.join('\n');
+}
 
 export const identityProviderServiceClient = {
   listIdentityProviders: () => Promise.resolve({ identityProviders: [] }),

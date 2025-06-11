@@ -8,6 +8,7 @@ import { userRoutes } from './routes/user';
 import { memoRoutes } from './routes/memo';
 import { tagRoutes } from './routes/tag';
 import { resourceRoutes } from './routes/resource';
+import { workspaceRoutes } from './routes/workspace';
 import { authMiddleware } from './middleware/auth';
 
 // 导入环境类型
@@ -51,6 +52,7 @@ app.route('/api/auth', authRoutes);
 app.use('/api/user/*', authMiddleware);
 app.use('/api/tag/*', authMiddleware);
 app.use('/api/resource/*', authMiddleware);
+app.use('/api/workspace/*', authMiddleware);
 
 // memo 路由需要部分认证
 app.use('/api/memo', authMiddleware);
@@ -62,6 +64,7 @@ app.route('/api/user', userRoutes);
 app.route('/api/memo', memoRoutes);
 app.route('/api/tag', tagRoutes);
 app.route('/api/resource', resourceRoutes);
+app.route('/api/workspace', workspaceRoutes);
 
 // 文件下载路由 (不在 /api 下)
 app.get('/o/r/:uid/:filename', async (c) => {

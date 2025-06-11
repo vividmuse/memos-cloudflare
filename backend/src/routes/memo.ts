@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { v4 as uuidv4 } from 'uuid';
+import { updateMemoTags } from '../utils';
 
 type Env = {
   DB: D1Database;
@@ -62,6 +63,14 @@ memoRoutes.post('/', async (c) => {
       }
     }
 
+    // 自动提取并创建标签
+    try {
+      await updateMemoTags(c.env.DB, memoId as number, user.id as number, content);
+    } catch (error) {
+      console.error('Failed to update memo tags:', error);
+      // 标签创建失败不影响memo创建
+    }
+
     // 获取创建的笔记信息
     const newMemo = await getMemoWithDetails(c.env.DB, memoId);
     
@@ -112,7 +121,7 @@ memoRoutes.get('/', async (c) => {
       params.push(tag);
     }
 
-    params.push(limit, offset);
+    params.push(limit.toString(), offset.toString());
 
     const memos = await c.env.DB.prepare(`
       SELECT m.*, u.username as creator_username
@@ -126,7 +135,7 @@ memoRoutes.get('/', async (c) => {
     // 为每个笔记获取详细信息
     const memosWithDetails = [];
     for (const memo of memos.results || []) {
-      const memoWithDetails = await getMemoWithDetails(c.env.DB, memo.id);
+      const memoWithDetails = await getMemoWithDetails(c.env.DB, memo.id as number);
       memosWithDetails.push(memoWithDetails);
     }
 
@@ -233,6 +242,16 @@ memoRoutes.patch('/:id', async (c) => {
             INSERT INTO memo_resource (memo_id, resource_id) VALUES (?, ?)
           `).bind(memoId, resourceId).run();
         }
+      }
+    }
+
+    // 如果内容更新了，重新提取标签
+    if (content !== undefined && userId) {
+      try {
+        await updateMemoTags(c.env.DB, memoId, userId, content);
+      } catch (error) {
+        console.error('Failed to update memo tags:', error);
+        // 标签更新失败不影响memo更新
       }
     }
 

@@ -184,4 +184,72 @@ export function log(level: string, message: string, data?: any): void {
   const timestamp = new Date().toISOString();
   const logData = data ? ` ${JSON.stringify(data)}` : '';
   console.log(`[${timestamp}] ${level.toUpperCase()}: ${message}${logData}`);
+}
+
+// 标签提取工具
+export function extractTagsFromContent(content: string): string[] {
+  // 匹配 #标签 格式，支持中文、英文、数字、下划线、连字符
+  const tagRegex = /#([^\s#]+)/g;
+  const tags = new Set<string>();
+  
+  let match;
+  while ((match = tagRegex.exec(content)) !== null) {
+    const tag = match[1];
+    // 过滤掉纯数字或过短的标签
+    if (tag.length >= 2 && !/^\d+$/.test(tag)) {
+      tags.add(tag);
+    }
+  }
+  
+  return Array.from(tags);
+}
+
+// 创建标签（如果不存在）
+export async function createTagIfNotExists(db: any, creatorId: number, tagName: string): Promise<number> {
+  // 检查标签是否已存在
+  const existingTag = await db.prepare(
+    'SELECT id FROM tag WHERE name = ? AND creator_id = ?'
+  ).bind(tagName, creatorId).first();
+  
+  if (existingTag) {
+    return existingTag.id;
+  }
+  
+  // 创建新标签
+  const now = getCurrentTimestamp();
+  const result = await db.prepare(`
+    INSERT INTO tag (creator_id, name, created_ts) 
+    VALUES (?, ?, ?)
+  `).bind(creatorId, tagName, now).run();
+  
+  if (!result.success) {
+    throw new Error(`Failed to create tag: ${tagName}`);
+  }
+  
+  return result.meta.last_row_id;
+}
+
+// 更新memo的标签关联
+export async function updateMemoTags(db: any, memoId: number, creatorId: number, content: string): Promise<void> {
+  // 提取内容中的标签
+  const tags = extractTagsFromContent(content);
+  
+  // 删除现有的标签关联
+  await db.prepare('DELETE FROM memo_tag WHERE memo_id = ?').bind(memoId).run();
+  
+  // 为每个标签创建关联
+  for (const tagName of tags) {
+    try {
+      const tagId = await createTagIfNotExists(db, creatorId, tagName);
+      
+      // 创建memo-tag关联
+      await db.prepare(`
+        INSERT INTO memo_tag (memo_id, tag_id) 
+        VALUES (?, ?)
+      `).bind(memoId, tagId).run();
+    } catch (error) {
+      console.error(`Error creating tag ${tagName}:`, error);
+      // 继续处理其他标签，不中断整个流程
+    }
+  }
 } 

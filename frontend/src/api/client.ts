@@ -381,20 +381,18 @@ class ApiClient {
 
   // Workspace Services
   async getWorkspaceProfile() {
-    return this.request('/health').then(health => ({
-      version: '0.24.0-cloudflare',
-      mode: 'prod',
-      instanceUrl: this.baseUrl,
-      owner: 'users/1', // Default owner
-    }));
+    return this.request('/api/workspace/profile');
   }
 
-  async getWorkspaceSetting(key: string) {
-    // For now, return default settings
-    return {
-      name: `workspace/${key}`,
-      value: this.getDefaultSetting(key),
-    };
+  async getWorkspaceSetting(name: string) {
+    return this.request(`/api/workspace/setting?name=${encodeURIComponent(name)}`);
+  }
+
+  async setWorkspaceSetting(setting: any) {
+    return this.request('/api/workspace/setting', {
+      method: 'POST',
+      body: JSON.stringify({ setting }),
+    });
   }
 
   private getDefaultSetting(key: string) {

@@ -1,0 +1,623 @@
+openapi: 3.1.0
+info:
+  title: Memos Cloudflare Edition API
+  version: "0.24.x"
+  description: |
+    100 % 兼容 usememos/memos 的 REST API：
+      • 认证：JWT（Authorization: Bearer）
+      • 返回时间戳均为 Unix 秒
+      • Cloudflare Workers + D1 + R2 部署
+servers:
+  - url: https://memos-api.51min.win
+    description: 生产环境 - 自定义域名
+  - url: https://memos-cloudflare.yourmin.workers.dev  
+    description: 生产环境 - Workers 域名
+  - url: /api
+    description: 相对路径（用于前端开发）
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+
+  ##### 通用 #####
+  schemas:
+    Error:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+    OK:
+      description: 通用 "成功" 回包
+      type: object
+      properties:
+        message:
+          type: string
+          example: OK
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+        timestamp:
+          type: string
+          format: date-time
+          example: "2025-06-11T06:43:10.211Z"
+        service:
+          type: string
+          example: memos-cloudflare
+        version:
+          type: string
+          example: "0.2.0"
+
+  ##### Auth #####
+    AuthSignInRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username: { type: string, example: admin }
+        password: { type: string, example: secret }
+    AuthSignUpRequest:
+      allOf:
+        - $ref: '#/components/schemas/AuthSignInRequest'
+        - type: object
+          properties:
+            email: { type: string, format: email, example: admin@example.com }
+    AuthResponse:
+      type: object
+      properties:
+        accessToken: { type: string, example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9... }
+        user: { $ref: '#/components/schemas/User' }
+
+  ##### User #####
+    User:
+      type: object
+      properties:
+        id:        { type: integer, example: 1 }
+        uid:       { type: string, example: "admin-uid-12345" }
+        username:  { type: string, example: "admin" }
+        role:      { type: string, enum: [HOST, USER], example: "HOST" }
+        email:     { type: string, nullable: true, example: null }
+        avatarUrl: { type: string, nullable: true, example: null }
+        rowStatus: { type: string, enum: [NORMAL, ARCHIVED], example: "NORMAL" }
+        createdTs: { type: integer, example: 1749622694 }
+        updatedTs: { type: integer, example: 1749622694 }
+    UserUpdate:
+      type: object
+      properties:
+        email:     { type: string }
+        avatarUrl: { type: string }
+
+  ##### Memo / Tag #####
+    Memo:
+      type: object
+      properties:
+        id:         { type: integer }
+        uid:        { type: string }
+        creatorId:  { type: integer }
+        content:    { type: string }
+        visibility: { type: string, enum: [PUBLIC, PROTECTED, PRIVATE] }
+        rowStatus:  { type: string, enum: [NORMAL, ARCHIVED] }
+        createdTs:  { type: integer }
+        updatedTs:  { type: integer }
+        resourceIdList:
+          type: array
+          items: { type: integer }
+        tags:
+          type: array
+          items: { type: string }
+    MemoCreate:
+      type: object
+      required: [content]
+      properties:
+        content:    { type: string }
+        visibility: { type: string }
+        resourceIdList:
+          type: array
+          items: { type: integer }
+    MemoUpdate:
+      allOf:
+        - $ref: '#/components/schemas/MemoCreate'
+    Tag:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        createdTs: { type: integer }
+    TagCreate:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+
+  ##### Resource #####
+    Resource:
+      type: object
+      properties:
+        id:         { type: integer }
+        uid:        { type: string }
+        filename:   { type: string }
+        mimeType:   { type: string }
+        size:       { type: integer }
+        externalUri:{ type: string }
+        createdTs:  { type: integer }
+
+  ##### Activity / Shortcut / Webhook / Workspace #####
+    Activity:
+      type: object
+      properties:
+        id:        { type: integer }
+        creatorId: { type: integer }
+        level:     { type: string, enum: [INFO, WARN, ERROR] }
+        message:   { type: string }
+        payload:   { type: string }
+        createdTs: { type: integer }
+    Shortcut:
+      type: object
+      properties:
+        id:        { type: integer }
+        creatorId: { type: integer }
+        memoId:    { type: integer }
+        createdTs: { type: integer }
+    ShortcutCreate:
+      type: object
+      required: [memoId]
+      properties:
+        memoId: { type: integer }
+    Webhook:
+      type: object
+      properties:
+        id:      { type: integer }
+        name:    { type: string }
+        url:     { type: string }
+        secret:  { type: string, nullable: true }
+        events:
+          type: array
+          items: { type: string }
+        createdTs:{ type: integer }
+    WebhookCreate:
+      allOf:
+        - $ref: '#/components/schemas/Webhook'
+        - type: object
+          required: [name, url, events]
+    WorkspaceProfile:
+      type: object
+      properties:
+        systemStatus: { type: string }
+        allowSignUp:  { type: boolean }
+    WorkspaceSetting:
+      type: object
+      properties:
+        id:        { type: integer }
+        name:      { type: string }
+        value:     { type: string }
+        createdTs: { type: integer }
+    WorkspaceSettingUpdate:
+      type: object
+      required: [name, value]
+      properties:
+        name:  { type: string }
+        value: { type: string }
+
+paths:
+
+  ### Health ###
+  /health:
+    get:
+      summary: Health check
+      description: 服务健康状态检查，无需认证
+      security: []  # 不需要认证
+      responses:
+        "200":
+          description: 服务正常
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HealthResponse' }
+
+  ### Auth ###
+  /auth/signin:
+    post:
+      summary: Sign in
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AuthSignInRequest' }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthResponse' }
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /auth/signup:
+    post:
+      summary: First-time signup (HOST)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AuthSignUpRequest' }
+      responses:
+        "200":
+          $ref: '#/paths/~1auth~1signin/post/responses/200'
+
+  ### User ###
+  /user/me:
+    get:
+      summary: Current user profile
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+
+  /user:
+    get:
+      summary: List users (admin)
+      parameters:
+        - in: query
+          name: rowStatus
+          schema: { type: string }
+        - in: query
+          name: limit
+          schema: { type: integer }
+        - in: query
+          name: offset
+          schema: { type: integer }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/User' }
+
+  /user/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: integer }
+    get:
+      summary: Public user profile
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+    patch:
+      summary: Update user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UserUpdate' }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+
+  ### Memo ###
+  /memo:
+    get:
+      summary: List memos
+      parameters:
+        - in: query
+          name: rowStatus
+          schema: { type: string }
+        - in: query
+          name: creatorId
+          schema: { type: integer }
+        - in: query
+          name: tag
+          schema: { type: string }
+        - in: query
+          name: visibility
+          schema: { type: string }
+        - in: query
+          name: limit
+          schema: { type: integer }
+        - in: query
+          name: offset
+          schema: { type: integer }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Memo' }
+    post:
+      summary: Create memo
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MemoCreate' }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Memo' }
+
+  /memo/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: integer }
+    get:
+      summary: Get memo
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Memo' }
+    patch:
+      summary: Update memo
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MemoUpdate' }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Memo' }
+    delete:
+      summary: Delete memo
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OK' }
+
+  /memo/stats:
+    get:
+      summary: Memo statistics
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total:     { type: integer }
+                  histogram:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        ts:    { type: integer }
+                        count: { type: integer }
+
+  /memo/all:
+    get:
+      summary: Owner full dump
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Memo' }
+
+  ### Tag ###
+  /tag:
+    get:
+      summary: List tags
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Tag' }
+    post:
+      summary: Create tag
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TagCreate' }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Tag' }
+
+  /tag/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: integer }
+    delete:
+      summary: Delete tag
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OK' }
+
+  ### Resource / Attachments ###
+  /resource/blob:
+    post:
+      summary: Upload attachment (multipart)
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Resource' }
+
+  /o/r/{uid}/{filename}:
+    parameters:
+      - name: uid
+        in: path
+        required: true
+        schema: { type: string }
+      - name: filename
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      summary: Download attachment (302)
+      responses:
+        "302":
+          description: Redirect to R2 signed URL
+
+  ### Activity ###
+  /activity:
+    get:
+      summary: List activities (self & system)
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Activity' }
+
+  ### Shortcut ###
+  /shortcut:
+    get:
+      summary: List shortcuts
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Shortcut' }
+    post:
+      summary: Create shortcut
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ShortcutCreate' }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Shortcut' }
+
+  /shortcut/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: integer }
+    delete:
+      summary: Delete shortcut
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OK' }
+
+  ### Webhook ###
+  /webhook:
+    get:
+      summary: List webhooks
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Webhook' }
+    post:
+      summary: Create webhook
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/WebhookCreate' }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Webhook' }
+
+  /webhook/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: integer }
+    patch:
+      summary: Update webhook
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/WebhookCreate' }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Webhook' }
+    delete:
+      summary: Delete webhook
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OK' }
+
+  ### Workspace ###
+  /workspace/profile:
+    get:
+      summary: Workspace profile
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WorkspaceProfile' }
+
+  /workspace/setting:
+    get:
+      summary: List workspace settings
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/WorkspaceSetting' }
+    post:
+      summary: Upsert workspace setting
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/WorkspaceSettingUpdate' }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WorkspaceSetting' }

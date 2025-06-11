@@ -4,7 +4,12 @@
 const getApiBaseUrl = () => {
   // 如果设置了环境变量，使用环境变量
   if (import.meta.env.VITE_API_BASE_URL) {
-    return import.meta.env.VITE_API_BASE_URL;
+    const url = import.meta.env.VITE_API_BASE_URL;
+    // 确保 URL 包含协议前缀
+    if (url && !url.startsWith('http')) {
+      return `https://${url}`;
+    }
+    return url;
   }
   
   // 如果是生产环境且在 Pages 上，尝试使用后端 Workers URL

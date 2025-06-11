@@ -43,6 +43,7 @@ userRoutes.get('/me', async (c) => {
       role: user.role,
       email: user.email,
       avatarUrl: user.avatar_url,
+      rowStatus: user.row_status,
       createdTs: user.created_ts,
       updatedTs: user.updated_ts
     };
@@ -69,7 +70,7 @@ userRoutes.get('/', async (c) => {
     const offset = parseInt(url.searchParams.get('offset') || '0');
 
     const users = await c.env.DB.prepare(`
-      SELECT id, uid, username, role, email, avatar_url, created_ts, updated_ts
+      SELECT id, uid, username, role, email, avatar_url, row_status, created_ts, updated_ts
       FROM user 
       WHERE row_status = ?
       ORDER BY created_ts DESC
@@ -157,7 +158,7 @@ userRoutes.patch('/:id', async (c) => {
 
     // 返回更新后的用户信息
     const updatedUser = await c.env.DB.prepare(
-      'SELECT id, uid, username, role, email, avatar_url, created_ts, updated_ts FROM user WHERE id = ?'
+      'SELECT id, uid, username, role, email, avatar_url, row_status, created_ts, updated_ts FROM user WHERE id = ?'
     ).bind(userId).first();
 
     return c.json(updatedUser);

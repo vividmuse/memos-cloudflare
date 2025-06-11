@@ -102,5 +102,5 @@ export const markdownServiceClient = {
 };
 
 export const identityProviderServiceClient = {
-  listIdentityProviders: () => Promise.resolve([]),
+  listIdentityProviders: () => Promise.resolve({ identityProviders: [] }),
 };

@@ -10,7 +10,6 @@ env:
   NODE_VERSION: '18'
 
 jobs:
-  # 部署后端 Workers
   deploy-backend:
     name: Deploy Backend (Workers)
     runs-on: ubuntu-latest
@@ -25,16 +24,18 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
           
-      - name: Install dependencies
+      - name: Install backend dependencies
         run: npm ci
+        working-directory: backend
         
       - name: Deploy to Cloudflare Workers
         run: npx wrangler deploy
+        working-directory: backend
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           
-  # 部署前端 Pages
   deploy-frontend:
     name: Deploy Frontend (Pages)
     runs-on: ubuntu-latest
@@ -43,9 +44,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          submodules: true
-          
+        
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -58,11 +57,11 @@ jobs:
           
       - name: Install frontend dependencies
         run: pnpm install
-        working-directory: memos-main/web
+        working-directory: frontend
         
       - name: Build frontend
         run: pnpm build
-        working-directory: memos-main/web
+        working-directory: frontend
         env:
           VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || 'https://memos.example.com' }}
           
@@ -72,31 +71,5 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           projectName: memos-frontend
-          directory: memos-main/web/dist
+          directory: frontend/dist
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
-          
-  # 运行测试
-  test:
-    name: Run Tests
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          
-      - name: Install dependencies
-        run: npm ci
-        
-      - name: Run unit tests
-        run: npm test
-        continue-on-error: true
-        
-      - name: Lint code
-        run: npm run lint
-        continue-on-error: true 

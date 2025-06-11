@@ -72,3 +72,9 @@ fresh-start.sh
 
 # Documentation (optional, uncomment if needed)
 # *.md 
+# 项目重构后的额外忽略
+backend/node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+docs/temp/

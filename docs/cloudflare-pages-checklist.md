@@ -18,10 +18,10 @@
 ```
 Project name: memos-frontend
 Production branch: main
-Framework preset: None 或 Vite
-Build command: cd memos-main/web && pnpm install && pnpm build
-Build output directory: memos-main/web/dist
-Root directory: / (留空)
+Framework preset: Vite
+Build command: pnpm install && pnpm build
+Build output directory: dist
+Root directory: frontend
 ```
 
 #### 🌍 环境变量
@@ -42,10 +42,11 @@ VITE_API_BASE_URL = https://memos.yourdomain.com
 
 ## 🚨 重要提醒
 
-1. **构建命令必须正确**：`cd memos-main/web && pnpm install && pnpm build`
-2. **输出目录**：`memos-main/web/dist`
-3. **环境变量**：`VITE_API_BASE_URL` 要指向您的实际 API 地址
-4. **路由文件**：确保 `_routes.json` 存在
+1. **构建命令必须正确**：`pnpm install && pnpm build`
+2. **根目录**：`frontend`
+3. **输出目录**：`dist`
+4. **环境变量**：`VITE_API_BASE_URL` 要指向您的实际 API 地址
+5. **路由文件**：确保 `frontend/_routes.json` 存在
 
 ## 📞 需要帮助？
 

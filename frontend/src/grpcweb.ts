@@ -35,8 +35,12 @@ export const workspaceSettingServiceClient = {
 
 // Auth Service  
 export const authServiceClient = {
-  signIn: (request: { username: string; password: string }) =>
-    apiClient.signIn(request.username, request.password),
+  signIn: (request: { passwordCredentials?: { username: string; password: string }; neverExpire?: boolean }) => {
+    if (request.passwordCredentials) {
+      return apiClient.signIn(request.passwordCredentials.username, request.passwordCredentials.password);
+    }
+    throw new Error('Password credentials required');
+  },
   signUp: (request: { username: string; password: string; email?: string }) =>
     apiClient.signUp(request.username, request.password, request.email),
 };

@@ -139,10 +139,27 @@ class ApiClient {
   async getMemos(params: any = {}) {
     const searchParams = new URLSearchParams(params);
     const memos = await this.request<any[]>(`/api/memo?${searchParams}`);
-    // 转换为前端期望的格式
+    
+    // 转换为前端期望的protobuf格式
     const formattedMemos = Array.isArray(memos) ? memos.map(memo => ({
-      ...memo,
-      name: `memos/${memo.id}`, // 前端期望的 name 格式
+      name: `memos/${memo.id}`,
+      uid: memo.uid || `memo-uid-${memo.id}`,
+      creator: `users/${memo.creatorId}`,
+      content: memo.content || '',
+      nodes: [], // TODO: 如果需要的话，解析markdown内容为节点
+      visibility: memo.visibility || 'PRIVATE',
+      tags: memo.tags || [],
+      pinned: memo.pinned || false,
+      resources: memo.resourceIdList || [],
+      relations: memo.relations || [],
+      reactions: memo.reactions || [],
+      snippet: memo.content ? memo.content.slice(0, 100) : '',
+      parent: memo.parent || '',
+      createTime: memo.createdTs ? new Date(memo.createdTs * 1000) : new Date(),
+      updateTime: memo.updatedTs ? new Date(memo.updatedTs * 1000) : new Date(),
+      displayTime: memo.createdTs ? new Date(memo.createdTs * 1000) : new Date(),
+      state: memo.rowStatus === 'ARCHIVED' ? 'ARCHIVED' : 'NORMAL',
+      location: memo.location || undefined,
     })) : [];
     
     const result = { 
@@ -156,10 +173,27 @@ class ApiClient {
 
   async getMemo(id: number) {
     const memo = await this.request<any>(`/api/memo/${id}`);
-    // 转换为前端期望的格式
+    
+    // 转换为前端期望的protobuf格式
     return {
-      ...memo,
-      name: `memos/${memo.id}`, // 前端期望的 name 格式
+      name: `memos/${memo.id}`,
+      uid: memo.uid || `memo-uid-${memo.id}`,
+      creator: `users/${memo.creatorId}`,
+      content: memo.content || '',
+      nodes: [], // TODO: 如果需要的话，解析markdown内容为节点
+      visibility: memo.visibility || 'PRIVATE',
+      tags: memo.tags || [],
+      pinned: memo.pinned || false,
+      resources: memo.resourceIdList || [],
+      relations: memo.relations || [],
+      reactions: memo.reactions || [],
+      snippet: memo.content ? memo.content.slice(0, 100) : '',
+      parent: memo.parent || '',
+      createTime: memo.createdTs ? new Date(memo.createdTs * 1000) : new Date(),
+      updateTime: memo.updatedTs ? new Date(memo.updatedTs * 1000) : new Date(),
+      displayTime: memo.createdTs ? new Date(memo.createdTs * 1000) : new Date(),
+      state: memo.rowStatus === 'ARCHIVED' ? 'ARCHIVED' : 'NORMAL',
+      location: memo.location || undefined,
     };
   }
 

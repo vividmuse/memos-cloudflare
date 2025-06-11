@@ -138,11 +138,26 @@ class ApiClient {
   // Memo Services
   async getMemos(params: any = {}) {
     const searchParams = new URLSearchParams(params);
-    return this.request(`/api/memo?${searchParams}`);
+    const memos = await this.request<any[]>(`/api/memo?${searchParams}`);
+    // 转换为前端期望的格式
+    const formattedMemos = Array.isArray(memos) ? memos.map(memo => ({
+      ...memo,
+      name: `memos/${memo.id}`, // 前端期望的 name 格式
+    })) : [];
+    
+    return { 
+      memos: formattedMemos, 
+      nextPageToken: '' // 暂时返回空字符串，表示没有更多页面
+    };
   }
 
   async getMemo(id: number) {
-    return this.request(`/api/memo/${id}`);
+    const memo = await this.request<any>(`/api/memo/${id}`);
+    // 转换为前端期望的格式
+    return {
+      ...memo,
+      name: `memos/${memo.id}`, // 前端期望的 name 格式
+    };
   }
 
   async createMemo(data: any) {

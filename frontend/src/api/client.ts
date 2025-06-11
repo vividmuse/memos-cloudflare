@@ -315,10 +315,32 @@ class ApiClient {
   }
 
   async updateMemo(id: number, data: any) {
-    return this.request(`/api/memo/${id}`, {
+    const memo = await this.request<any>(`/api/memo/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
     });
+    
+    // 转换为前端期望的protobuf格式
+    return {
+      name: `memos/${memo.id}`,
+      uid: memo.uid || `memo-uid-${memo.id}`,
+      creator: `users/${memo.creatorId}`,
+      content: memo.content || '',
+      nodes: this.convertContentToNodes(memo.content || ''),
+      visibility: memo.visibility || 'PRIVATE',
+      tags: memo.tags || [],
+      pinned: memo.pinned || false,
+      resources: memo.resourceIdList || [],
+      relations: memo.relations || [],
+      reactions: memo.reactions || [],
+      snippet: memo.content ? memo.content.slice(0, 100) : '',
+      parent: memo.parent || '',
+      createTime: memo.createdTs ? new Date(memo.createdTs * 1000) : new Date(),
+      updateTime: memo.updatedTs ? new Date(memo.updatedTs * 1000) : new Date(),
+      displayTime: memo.createdTs ? new Date(memo.createdTs * 1000) : new Date(),
+      state: memo.rowStatus === 'ARCHIVED' ? 'ARCHIVED' : 'NORMAL',
+      location: memo.location || undefined,
+    };
   }
 
   async deleteMemo(id: number) {

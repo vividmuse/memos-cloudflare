@@ -122,8 +122,10 @@ export const memoServiceClient = {
     return apiClient.getMemo(id);
   },
   createMemo: (request: { memo: any }) => apiClient.createMemo(request.memo),
-  updateMemo: (request: { memo: any; updateMask: any }) =>
-    apiClient.updateMemo(request.memo.id, request.memo),
+  updateMemo: (request: { memo: any; updateMask: any }) => {
+    const id = parseInt(request.memo.name.replace('memos/', ''));
+    return apiClient.updateMemo(id, request.memo);
+  },
   deleteMemo: (request: { name: string }) => {
     const id = parseInt(request.name.replace('memos/', ''));
     return apiClient.deleteMemo(id);

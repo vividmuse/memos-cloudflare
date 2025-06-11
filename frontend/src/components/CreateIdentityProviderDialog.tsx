@@ -137,7 +137,7 @@ const CreateIdentityProviderDialog: React.FC<Props> = (props: Props) => {
       if (identityProvider.type === IdentityProvider_Type.OAUTH2) {
         const oauth2Config = OAuth2Config.fromPartial(identityProvider.config?.oauth2Config || {});
         setOAuth2Config(oauth2Config);
-        setOAuth2Scopes(oauth2Config.scopes.join(" "));
+        setOAuth2Scopes((oauth2Config.scopes || []).join(" "));
       }
     }
   }, []);
@@ -157,7 +157,7 @@ const CreateIdentityProviderDialog: React.FC<Props> = (props: Props) => {
       if (template.type === IdentityProvider_Type.OAUTH2) {
         const oauth2Config = OAuth2Config.fromPartial(template.config?.oauth2Config || {});
         setOAuth2Config(oauth2Config);
-        setOAuth2Scopes(oauth2Config.scopes.join(" "));
+        setOAuth2Scopes((oauth2Config.scopes || []).join(" "));
       }
     }
   }, [selectedTemplate]);

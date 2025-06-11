@@ -80,14 +80,14 @@ class ApiClient {
 
   // Auth Services
   async signIn(username: string, password: string) {
-    const response = await this.request<{ token?: string, user?: any }>('/api/auth/signin', {
+    const response = await this.request<{ accessToken?: string, user?: any }>('/api/auth/signin', {
       method: 'POST',
       body: JSON.stringify({ username, password }),
     });
     
     // 保存 token 到 localStorage
-    if (response.token) {
-      localStorage.setItem('accessToken', response.token);
+    if (response.accessToken) {
+      localStorage.setItem('accessToken', response.accessToken);
     }
     
     return response;
@@ -102,7 +102,12 @@ class ApiClient {
 
   // User Services
   async getCurrentUser() {
-    return this.request('/api/user/me');
+    const user = await this.request<{ id: number, [key: string]: any }>('/api/user/me');
+    // 转换为前端期望的格式
+    return {
+      ...user,
+      name: `users/${user.id}`, // 前端期望的 name 格式
+    };
   }
 
   async getUser(id: number) {

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { matchPath } from "react-router-dom";
 import PullToRefresh from "react-simple-pull-to-refresh";
 import { DEFAULT_LIST_MEMOS_PAGE_SIZE } from "@/helpers/consts";
+import useCurrentUser from "@/hooks/useCurrentUser";
 import useResponsiveWidth from "@/hooks/useResponsiveWidth";
 import { Routes } from "@/router";
 import { memoStore, viewStore } from "@/store/v2";
@@ -48,16 +49,18 @@ const PagedMemoList = observer((props: Props) => {
     setIsRequesting(true);
 
     try {
-      const response = await memoStore.fetchMemos({
-        parent: props.owner || "",
+      const fetchParams: any = {
         state: props.state || State.NORMAL,
         direction: props.direction || Direction.DESC,
         filter: props.filter || "",
         oldFilter: props.oldFilter || "",
         pageSize: props.pageSize || DEFAULT_LIST_MEMOS_PAGE_SIZE,
         pageToken,
-      });
-
+      };
+      if (props.owner) {
+        fetchParams.parent = props.owner;
+      }
+      const response = await memoStore.fetchMemos(fetchParams);
       setNextPageToken(response?.nextPageToken || "");
     } finally {
       setIsRequesting(false);

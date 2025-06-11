@@ -42,6 +42,9 @@ const Setting = observer(() => {
   const { md } = useResponsiveWidth();
   const location = useLocation();
   const user = useCurrentUser();
+  if (!user) {
+    return null;
+  }
   const [state, setState] = useState<State>({
     selectedSection: "my-account",
   });

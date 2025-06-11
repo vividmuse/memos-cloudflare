@@ -60,7 +60,7 @@ const Home = observer(() => {
           )
           .sort((a, b) => Number(b.pinned) - Number(a.pinned))
       }
-      owner={user.name}
+      {...(user ? { owner: user.name } : {})}
       direction={viewStore.state.orderByTimeAsc ? Direction.ASC : Direction.DESC}
       filter={selectedShortcut?.filter || ""}
       oldFilter={memoListFilter}

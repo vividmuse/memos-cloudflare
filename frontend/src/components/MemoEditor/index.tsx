@@ -62,6 +62,9 @@ const MemoEditor = observer((props: Props) => {
   const t = useTranslate();
   const { i18n } = useTranslation();
   const currentUser = useCurrentUser();
+  if (!currentUser) {
+    return null;
+  }
   const [state, setState] = useState<State>({
     memoVisibility: Visibility.PRIVATE,
     resourceList: [],

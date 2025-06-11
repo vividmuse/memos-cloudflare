@@ -414,6 +414,30 @@ class ApiClient {
   async getHealth() {
     return this.request('/health');
   }
+
+  // User Settings
+  async getUserSetting(userId: number) {
+    const setting = await this.request<any>(`/api/user/${userId}/setting`);
+    return {
+      name: setting.name,
+      locale: setting.locale || 'zh',
+      appearance: setting.appearance || 'system',
+      memoVisibility: setting.memoVisibility || 'PRIVATE',
+    };
+  }
+
+  async updateUserSetting(userId: number, data: any) {
+    const setting = await this.request<any>(`/api/user/${userId}/setting`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+    return {
+      name: setting.name,
+      locale: setting.locale,
+      appearance: setting.appearance,
+      memoVisibility: setting.memoVisibility,
+    };
+  }
 }
 
 export const apiClient = new ApiClient();

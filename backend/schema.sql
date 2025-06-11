@@ -4,6 +4,7 @@ DROP TABLE IF EXISTS resource;
 DROP TABLE IF EXISTS tag;
 DROP TABLE IF EXISTS memo;
 DROP TABLE IF EXISTS user;
+DROP TABLE IF EXISTS user_setting;
 
 CREATE TABLE user (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -13,10 +14,23 @@ CREATE TABLE user (
     password_hash TEXT NOT NULL,
     nickname TEXT,
     avatar_url TEXT,
+    description TEXT,
     role TEXT NOT NULL DEFAULT 'USER',
     row_status TEXT NOT NULL DEFAULT 'NORMAL',
     created_ts INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
     updated_ts INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
+);
+
+-- 用户设置表
+CREATE TABLE user_setting (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    locale TEXT NOT NULL DEFAULT 'zh',
+    appearance TEXT NOT NULL DEFAULT 'system',
+    memo_visibility TEXT NOT NULL DEFAULT 'PRIVATE',
+    created_ts INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+    updated_ts INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+    FOREIGN KEY (user_id) REFERENCES user (id) ON DELETE CASCADE
 );
 
 -- 备忘录表

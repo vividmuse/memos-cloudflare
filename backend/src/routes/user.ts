@@ -186,4 +186,160 @@ userRoutes.patch('/:id', async (c) => {
   }
 });
 
+// 获取用户设置
+userRoutes.get('/:id/setting', async (c) => {
+  try {
+    const userId = parseInt(c.req.param('id'));
+    const userPayload = c.get('user');
+    
+    if (!userPayload) {
+      return c.json({ message: 'Unauthorized' }, 401);
+    }
+
+    // 检查权限：只能获取自己的设置，或者HOST可以获取任何人
+    const targetUser = await c.env.DB.prepare(
+      'SELECT * FROM user WHERE id = ? AND row_status = ?'
+    ).bind(userId, 'NORMAL').first();
+
+    if (!targetUser) {
+      return c.json({ message: 'User not found' }, 404);
+    }
+
+    if (targetUser.uid !== userPayload.sub && userPayload.role !== 'HOST') {
+      return c.json({ message: 'Forbidden' }, 403);
+    }
+
+    // 获取用户设置，如果不存在则返回默认值
+    let userSetting = await c.env.DB.prepare(
+      'SELECT * FROM user_setting WHERE user_id = ?'
+    ).bind(userId).first();
+
+    if (!userSetting) {
+      // 如果没有设置记录，创建默认设置
+      const now = Math.floor(Date.now() / 1000);
+      await c.env.DB.prepare(`
+        INSERT INTO user_setting (user_id, locale, appearance, memo_visibility, created_ts, updated_ts)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `).bind(userId, 'zh', 'system', 'PRIVATE', now, now).run();
+      
+      userSetting = {
+        user_id: userId,
+        locale: 'zh',
+        appearance: 'system',
+        memo_visibility: 'PRIVATE',
+        created_ts: now,
+        updated_ts: now
+      };
+    }
+
+    return c.json({
+      name: `users/${userId}/setting`,
+      locale: userSetting.locale,
+      appearance: userSetting.appearance,
+      memoVisibility: userSetting.memo_visibility
+    });
+
+  } catch (error) {
+    console.error('Get user setting error:', error);
+    return c.json({ message: 'Internal server error' }, 500);
+  }
+});
+
+// 更新用户设置
+userRoutes.patch('/:id/setting', async (c) => {
+  try {
+    const userId = parseInt(c.req.param('id'));
+    const userPayload = c.get('user');
+    
+    if (!userPayload) {
+      return c.json({ message: 'Unauthorized' }, 401);
+    }
+
+    // 检查权限：只能修改自己的设置，或者HOST可以修改任何人
+    const targetUser = await c.env.DB.prepare(
+      'SELECT * FROM user WHERE id = ? AND row_status = ?'
+    ).bind(userId, 'NORMAL').first();
+
+    if (!targetUser) {
+      return c.json({ message: 'User not found' }, 404);
+    }
+
+    if (targetUser.uid !== userPayload.sub && userPayload.role !== 'HOST') {
+      return c.json({ message: 'Forbidden' }, 403);
+    }
+
+    const { locale, appearance, memoVisibility } = await c.req.json();
+    const now = Math.floor(Date.now() / 1000);
+
+    // 检查是否已有设置记录
+    const existingSetting = await c.env.DB.prepare(
+      'SELECT * FROM user_setting WHERE user_id = ?'
+    ).bind(userId).first();
+
+    if (existingSetting) {
+      // 更新现有设置
+      const updates = [];
+      const values = [];
+      
+      if (locale !== undefined) {
+        updates.push('locale = ?');
+        values.push(locale);
+      }
+      
+      if (appearance !== undefined) {
+        updates.push('appearance = ?');
+        values.push(appearance);
+      }
+      
+      if (memoVisibility !== undefined) {
+        updates.push('memo_visibility = ?');
+        values.push(memoVisibility);
+      }
+
+      if (updates.length > 0) {
+        updates.push('updated_ts = ?');
+        values.push(now);
+        values.push(userId);
+
+        await c.env.DB.prepare(`
+          UPDATE user_setting SET ${updates.join(', ')} WHERE user_id = ?
+        `).bind(...values).run();
+      }
+    } else {
+      // 创建新设置记录
+      await c.env.DB.prepare(`
+        INSERT INTO user_setting (user_id, locale, appearance, memo_visibility, created_ts, updated_ts)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `).bind(
+        userId,
+        locale || 'zh',
+        appearance || 'system',
+        memoVisibility || 'PRIVATE',
+        now,
+        now
+      ).run();
+    }
+
+    // 返回更新后的设置
+    const updatedSetting = await c.env.DB.prepare(
+      'SELECT * FROM user_setting WHERE user_id = ?'
+    ).bind(userId).first();
+
+    if (!updatedSetting) {
+      return c.json({ message: 'Failed to retrieve updated setting' }, 500);
+    }
+
+    return c.json({
+      name: `users/${userId}/setting`,
+      locale: updatedSetting.locale,
+      appearance: updatedSetting.appearance,
+      memoVisibility: updatedSetting.memo_visibility
+    });
+
+  } catch (error) {
+    console.error('Update user setting error:', error);
+    return c.json({ message: 'Internal server error' }, 500);
+  }
+});
+
 export { userRoutes }; 

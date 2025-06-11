@@ -72,14 +72,16 @@ export const userServiceClient = {
     const id = parseInt(request.name.replace('users/', ''));
     return apiClient.deleteUser(id);
   },
-  getUserSetting: () => 
-    Promise.resolve({
-      locale: 'zh',
-      appearance: 'system',
-      memoVisibility: 'PRIVATE',
-    }),
-  updateUserSetting: (request: { setting: any; updateMask: string[] }) =>
-    Promise.resolve(request.setting),
+  getUserSetting: (request?: { name?: string }) => {
+    // 从当前登录用户获取ID
+    const currentUserId = 1; // TODO: 从当前用户context获取真实ID
+    return apiClient.getUserSetting(currentUserId);
+  },
+  updateUserSetting: (request: { setting: any; updateMask: string[] }) => {
+    // 从当前登录用户获取ID
+    const currentUserId = 1; // TODO: 从当前用户context获取真实ID
+    return apiClient.updateUserSetting(currentUserId, request.setting);
+  },
   getUserStats: (request: { name: string }) => 
     Promise.resolve({
       name: request.name,

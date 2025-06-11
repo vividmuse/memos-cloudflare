@@ -40,9 +40,11 @@ userRoutes.get('/me', async (c) => {
       id: user.id,
       uid: user.uid,
       username: user.username,
+      nickname: user.nickname,
       role: user.role,
       email: user.email,
       avatarUrl: user.avatar_url,
+      description: user.description,
       rowStatus: user.row_status,
       createdTs: user.created_ts,
       updatedTs: user.updated_ts
@@ -70,7 +72,7 @@ userRoutes.get('/', async (c) => {
     const offset = parseInt(url.searchParams.get('offset') || '0');
 
     const users = await c.env.DB.prepare(`
-      SELECT id, uid, username, role, email, avatar_url, row_status, created_ts, updated_ts
+      SELECT id, uid, username, nickname, role, email, avatar_url, description, row_status, created_ts, updated_ts
       FROM user 
       WHERE row_status = ?
       ORDER BY created_ts DESC
@@ -129,12 +131,22 @@ userRoutes.patch('/:id', async (c) => {
       return c.json({ message: 'Forbidden' }, 403);
     }
 
-    const { email, avatarUrl } = await c.req.json();
+    const { username, nickname, email, avatarUrl, description } = await c.req.json();
     const now = Math.floor(Date.now() / 1000);
 
     // 构建更新字段
     const updates = [];
     const values = [];
+    
+    if (username !== undefined) {
+      updates.push('username = ?');
+      values.push(username);
+    }
+    
+    if (nickname !== undefined) {
+      updates.push('nickname = ?');
+      values.push(nickname);
+    }
     
     if (email !== undefined) {
       updates.push('email = ?');
@@ -144,6 +156,11 @@ userRoutes.patch('/:id', async (c) => {
     if (avatarUrl !== undefined) {
       updates.push('avatar_url = ?');
       values.push(avatarUrl);
+    }
+    
+    if (description !== undefined) {
+      updates.push('description = ?');
+      values.push(description);
     }
 
     updates.push('updated_ts = ?');
@@ -158,7 +175,7 @@ userRoutes.patch('/:id', async (c) => {
 
     // 返回更新后的用户信息
     const updatedUser = await c.env.DB.prepare(
-      'SELECT id, uid, username, role, email, avatar_url, row_status, created_ts, updated_ts FROM user WHERE id = ?'
+      'SELECT id, uid, username, nickname, role, email, avatar_url, description, row_status, created_ts, updated_ts FROM user WHERE id = ?'
     ).bind(userId).first();
 
     return c.json(updatedUser);

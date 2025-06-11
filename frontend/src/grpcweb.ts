@@ -56,8 +56,18 @@ export const userServiceClient = {
   },
   getUserByUsername: (request: { username: string }) => apiClient.getUserByUsername(request.username),
   listUsers: () => apiClient.listUsers(),
-  updateUser: (request: { user: any; updateMask: any }) =>
-    apiClient.updateUser(request.user.id, request.user),
+  updateUser: (request: { user: any; updateMask: any }) => {
+    const id = parseInt(request.user.name.replace('users/', ''));
+    // 构造后端期望的数据格式
+    const userData = {
+      username: request.user.username,
+      nickname: request.user.nickname,
+      email: request.user.email,
+      avatarUrl: request.user.avatarUrl,
+      description: request.user.description,
+    };
+    return apiClient.updateUser(id, userData);
+  },
   deleteUser: (request: { name: string }) => {
     const id = parseInt(request.name.replace('users/', ''));
     return apiClient.deleteUser(id);

@@ -104,16 +104,37 @@ class ApiClient {
 
   // User Services
   async getCurrentUser() {
-    const user = await this.request<{ id: number, [key: string]: any }>('/api/user/me');
-    // 转换为前端期望的格式
+    const user = await this.request<any>('/api/user/me');
+    // 转换为前端期望的protobuf格式
     return {
-      ...user,
-      name: `users/${user.id}`, // 前端期望的 name 格式
+      name: `users/${user.id}`,
+      username: user.username || '',
+      nickname: user.nickname || '',
+      email: user.email || '',
+      avatarUrl: user.avatarUrl || '',
+      description: user.description || '',
+      role: user.role || 'USER',
+      state: user.rowStatus === 'NORMAL' ? 'ACTIVE' : 'ARCHIVED',
+      createTime: user.createdTs ? new Date(user.createdTs * 1000) : new Date(),
+      updateTime: user.updatedTs ? new Date(user.updatedTs * 1000) : new Date(),
     };
   }
 
   async getUser(id: number) {
-    return this.request(`/api/user/${id}`);
+    const user = await this.request<any>(`/api/user/${id}`);
+    // 转换为前端期望的protobuf格式
+    return {
+      name: `users/${user.id}`,
+      username: user.username || '',
+      nickname: user.nickname || '',
+      email: user.email || '',
+      avatarUrl: user.avatarUrl || '',
+      description: user.description || '',
+      role: user.role || 'USER',
+      state: user.rowStatus === 'NORMAL' ? 'ACTIVE' : 'ARCHIVED',
+      createTime: user.createdTs ? new Date(user.createdTs * 1000) : new Date(),
+      updateTime: user.updatedTs ? new Date(user.updatedTs * 1000) : new Date(),
+    };
   }
 
   async getUserByUsername(username: string) {
@@ -125,10 +146,23 @@ class ApiClient {
   }
 
   async updateUser(id: number, data: any) {
-    return this.request(`/api/user/${id}`, {
+    const user = await this.request<any>(`/api/user/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
     });
+    // 转换为前端期望的protobuf格式
+    return {
+      name: `users/${user.id}`,
+      username: user.username || '',
+      nickname: user.nickname || '',
+      email: user.email || '',
+      avatarUrl: user.avatarUrl || '',
+      description: user.description || '',
+      role: user.role || 'USER',
+      state: user.rowStatus === 'NORMAL' ? 'ACTIVE' : 'ARCHIVED',
+      createTime: user.createdTs ? new Date(user.createdTs * 1000) : new Date(),
+      updateTime: user.updatedTs ? new Date(user.updatedTs * 1000) : new Date(),
+    };
   }
 
   async deleteUser(id: number) {

@@ -14,6 +14,15 @@ const PreferencesSection = observer(() => {
   const t = useTranslate();
   const setting = userStore.state.userSetting as UserSetting;
 
+  // 防御性检查，如果setting为undefined，提供默认值
+  if (!setting) {
+    return (
+      <div className="w-full flex flex-col gap-2 pt-2 pb-4">
+        <p className="font-medium text-gray-700 dark:text-gray-500">Loading user settings...</p>
+      </div>
+    );
+  }
+
   const handleLocaleSelectChange = async (locale: Locale) => {
     await userStore.updateUserSetting({ locale }, ["locale"]);
   };
@@ -32,12 +41,12 @@ const PreferencesSection = observer(() => {
 
       <div className="w-full flex flex-row justify-between items-center">
         <span>{t("common.language")}</span>
-        <LocaleSelect value={setting.locale} onChange={handleLocaleSelectChange} />
+        <LocaleSelect value={setting.locale || 'zh'} onChange={handleLocaleSelectChange} />
       </div>
 
       <div className="w-full flex flex-row justify-between items-center">
         <span>{t("setting.preference-section.theme")}</span>
-        <AppearanceSelect value={setting.appearance as Appearance} onChange={handleAppearanceSelectChange} />
+        <AppearanceSelect value={(setting.appearance || 'system') as Appearance} onChange={handleAppearanceSelectChange} />
       </div>
 
       <p className="font-medium text-gray-700 dark:text-gray-500">{t("setting.preference")}</p>
@@ -46,8 +55,8 @@ const PreferencesSection = observer(() => {
         <span className="truncate">{t("setting.preference-section.default-memo-visibility")}</span>
         <Select
           className="min-w-fit!"
-          value={setting.memoVisibility}
-          startDecorator={<VisibilityIcon visibility={convertVisibilityFromString(setting.memoVisibility)} />}
+          value={setting.memoVisibility || 'PRIVATE'}
+          startDecorator={<VisibilityIcon visibility={convertVisibilityFromString(setting.memoVisibility || 'PRIVATE')} />}
           onChange={(_, visibility) => {
             if (visibility) {
               handleDefaultMemoVisibilityChanged(visibility);

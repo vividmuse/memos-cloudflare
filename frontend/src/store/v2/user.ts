@@ -210,7 +210,21 @@ const userStore = (() => {
 export const initialUserStore = async () => {
   try {
     const currentUser = await authServiceClient.getAuthStatus({});
-    const userSetting = await userServiceClient.getUserSetting({});
+    let userSetting;
+    
+    try {
+      userSetting = await userServiceClient.getUserSetting({});
+    } catch (error) {
+      console.warn('Failed to fetch user setting, using defaults:', error);
+      // 如果获取用户设置失败，使用默认设置
+      userSetting = {
+        name: `users/1/setting`,
+        locale: 'zh',
+        appearance: 'system',
+        memoVisibility: 'PRIVATE',
+      };
+    }
+    
     userStore.state.setPartial({
       currentUser: currentUser.name,
       userSetting: UserSetting.fromPartial({

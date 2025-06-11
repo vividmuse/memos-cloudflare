@@ -145,10 +145,13 @@ class ApiClient {
       name: `memos/${memo.id}`, // 前端期望的 name 格式
     })) : [];
     
-    return { 
+    const result = { 
       memos: formattedMemos, 
       nextPageToken: '' // 暂时返回空字符串，表示没有更多页面
     };
+    
+    console.log('🔄 Transformed memo response:', result);
+    return result;
   }
 
   async getMemo(id: number) {

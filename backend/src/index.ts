@@ -18,7 +18,12 @@ const app = new Hono<{ Bindings: Env }>();
 
 // 全局中间件
 app.use('*', cors({
-  origin: '*',
+  origin: [
+    'https://memos-cloudflare.pages.dev',
+    'https://memos.51min.win',
+    'http://localhost:3001',  // 本地开发
+    'http://localhost:3000'   // 本地开发备用
+  ],
   allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowHeaders: ['Content-Type', 'Authorization', 'X-Request-Id'],
   exposeHeaders: ['X-Request-Id'],

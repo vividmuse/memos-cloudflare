@@ -1,6 +1,150 @@
 # Memos Cloudflare Edition
 
-基于 PRD 文档的完整 Memos 项目迁移到 Cloudflare Workers + D1 + R2 平台。
+基于 Cloudflare Workers + D1 + R2 的 Memos 部署版本，提供 100% API 兼容性。
+
+## 🚀 部署状态
+
+- **后端**: https://memos-cloudflare.yourmin.workers.dev ✅
+- **前端**: https://memos-cloudflare.pages.dev 🔄
+- **数据库**: Cloudflare D1 ✅
+- **存储**: Cloudflare R2 (需配置)
+
+## 🔑 登录信息
+
+- **用户名**: `admin`
+- **密码**: `123456`
+
+## 📁 项目结构
+
+```
+├── backend/          # Cloudflare Workers + Hono API
+│   ├── src/          # 源代码
+│   ├── schema.sql    # 数据库结构
+│   └── wrangler.toml # Workers 配置
+├── frontend/         # React + Vite 前端
+│   ├── src/          # 源代码
+│   └── dist/         # 构建输出
+├── docs/             # 项目文档
+└── .github/workflows/ # CI/CD 配置
+```
+
+## ⚙️ Cloudflare Pages 配置
+
+### 构建设置
+
+```
+Framework preset:       Vite
+Root directory:         frontend
+Build command:          pnpm install && pnpm build
+Build output directory: dist
+Node.js version:        18
+```
+
+### 环境变量
+
+```
+VITE_API_BASE_URL=https://memos-cloudflare.yourmin.workers.dev
+```
+
+## 🔧 本地开发
+
+### 后端开发
+
+```bash
+cd backend
+npm install
+npm run dev  # 启动开发服务器
+```
+
+### 前端开发
+
+```bash
+cd frontend
+pnpm install
+pnpm dev     # 启动开发服务器
+```
+
+## 📦 部署
+
+### 自动部署
+
+推送到 `main` 分支会自动触发 GitHub Actions 部署：
+
+- **后端**: 部署到 Cloudflare Workers
+- **前端**: 部署到 Cloudflare Pages
+
+### 手动部署
+
+```bash
+# 部署后端
+cd backend
+npx wrangler deploy
+
+# 部署前端 (自动通过 GitHub)
+git push origin main
+```
+
+## 🗃️ 数据库管理
+
+```bash
+# 查看表结构
+cd backend
+npx wrangler d1 execute memos --remote --command "SELECT name FROM sqlite_master WHERE type='table'"
+
+# 执行 SQL
+npx wrangler d1 execute memos --remote --command "SELECT * FROM user LIMIT 5"
+
+# 运行迁移
+npx wrangler d1 execute memos --remote --file schema.sql
+```
+
+## 🔒 环境变量设置
+
+```bash
+# 设置 JWT 密钥
+cd backend
+npx wrangler secret put JWT_SECRET
+
+# 设置 R2 存储 (可选)
+npx wrangler secret put R2_ACCOUNT_ID
+npx wrangler secret put R2_ACCESS_KEY_ID
+npx wrangler secret put R2_SECRET_ACCESS_KEY
+npx wrangler secret put R2_BUCKET
+```
+
+## 🌟 特性
+
+- ✅ **无服务器架构**: 基于 Cloudflare Workers，无需维护服务器
+- ✅ **全球边缘部署**: 通过 Cloudflare 网络实现全球高速访问
+- ✅ **100% API 兼容**: 与原版 Memos v0.24.x API 完全兼容
+- ✅ **JWT 身份验证**: 安全的用户认证系统
+- ✅ **D1 数据库**: 基于 SQLite 的分布式数据库
+- ✅ **R2 对象存储**: 文件上传和存储支持
+- ✅ **自动 CI/CD**: GitHub Actions 自动部署
+
+## 🛠️ 故障排除
+
+### 前端页面空白
+
+确保 Cloudflare Pages 配置正确：
+- Root directory: `frontend`
+- Build output directory: `dist`
+
+### API 连接错误
+
+检查环境变量 `VITE_API_BASE_URL` 是否正确设置。
+
+### 数据库错误
+
+运行数据库迁移：
+```bash
+cd backend
+npx wrangler d1 execute memos --remote --file schema.sql
+```
+
+## 📄 许可证
+
+基于原 Memos 项目，采用 MIT 许可证。
 
 ## 项目概述
 

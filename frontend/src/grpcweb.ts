@@ -1,46 +1,106 @@
-import { createChannel, createClientFactory, FetchTransport } from "nice-grpc-web";
-import { ActivityServiceDefinition } from "./types/proto/api/v1/activity_service";
-import { AuthServiceDefinition } from "./types/proto/api/v1/auth_service";
-import { IdentityProviderServiceDefinition } from "./types/proto/api/v1/idp_service";
-import { InboxServiceDefinition } from "./types/proto/api/v1/inbox_service";
-import { MarkdownServiceDefinition } from "./types/proto/api/v1/markdown_service";
-import { MemoServiceDefinition } from "./types/proto/api/v1/memo_service";
-import { ResourceServiceDefinition } from "./types/proto/api/v1/resource_service";
-import { ShortcutServiceDefinition } from "./types/proto/api/v1/shortcut_service";
-import { UserServiceDefinition } from "./types/proto/api/v1/user_service";
-import { WebhookServiceDefinition } from "./types/proto/api/v1/webhook_service";
-import { WorkspaceServiceDefinition } from "./types/proto/api/v1/workspace_service";
-import { WorkspaceSettingServiceDefinition } from "./types/proto/api/v1/workspace_setting_service";
+// REST API Client for Cloudflare Workers Backend
+import { apiClient } from "./api/client";
 
-const channel = createChannel(
-  window.location.origin,
-  FetchTransport({
-    credentials: "include",
-  }),
-);
+// Create compatible service clients that use REST API
+const createServiceClient = (service: any) => ({
+  [service]: apiClient,
+});
 
-const clientFactory = createClientFactory();
+// Workspace Service
+export const workspaceServiceClient = {
+  getWorkspaceProfile: async () => {
+    try {
+      const profile = await apiClient.getWorkspaceProfile();
+      console.log('✅ Workspace profile loaded:', profile);
+      return profile;
+    } catch (error) {
+      console.error('❌ Failed to load workspace profile:', error);
+      // Return a fallback profile if API fails
+      return {
+        version: '0.24.0-cloudflare',
+        mode: 'prod',
+        instanceUrl: window.location.origin,
+        owner: 'users/1',
+      };
+    }
+  },
+};
 
-export const workspaceServiceClient = clientFactory.create(WorkspaceServiceDefinition, channel);
+export const workspaceSettingServiceClient = {
+  getWorkspaceSetting: (request: { name: string }) => {
+    const key = request.name.replace('workspace/', '');
+    return apiClient.getWorkspaceSetting(key);
+  },
+};
 
-export const workspaceSettingServiceClient = clientFactory.create(WorkspaceSettingServiceDefinition, channel);
+// Auth Service  
+export const authServiceClient = {
+  signIn: (request: { username: string; password: string }) =>
+    apiClient.signIn(request.username, request.password),
+  signUp: (request: { username: string; password: string; email?: string }) =>
+    apiClient.signUp(request.username, request.password, request.email),
+};
 
-export const authServiceClient = clientFactory.create(AuthServiceDefinition, channel);
+// User Service
+export const userServiceClient = {
+  getCurrentUser: () => apiClient.getCurrentUser(),
+  getUser: (request: { name: string }) => {
+    const id = parseInt(request.name.replace('users/', ''));
+    return apiClient.getUser(id);
+  },
+  updateUser: (request: { user: any; updateMask: any }) =>
+    apiClient.updateUser(request.user.id, request.user),
+};
 
-export const userServiceClient = clientFactory.create(UserServiceDefinition, channel);
+// Memo Service
+export const memoServiceClient = {
+  listMemos: (request: any) => apiClient.getMemos(request),
+  getMemo: (request: { name: string }) => {
+    const id = parseInt(request.name.replace('memos/', ''));
+    return apiClient.getMemo(id);
+  },
+  createMemo: (request: { memo: any }) => apiClient.createMemo(request.memo),
+  updateMemo: (request: { memo: any; updateMask: any }) =>
+    apiClient.updateMemo(request.memo.id, request.memo),
+  deleteMemo: (request: { name: string }) => {
+    const id = parseInt(request.name.replace('memos/', ''));
+    return apiClient.deleteMemo(id);
+  },
+};
 
-export const memoServiceClient = clientFactory.create(MemoServiceDefinition, channel);
+// Resource Service
+export const resourceServiceClient = {
+  createResource: (request: { resource: any }) => {
+    if (request.resource.blob) {
+      const file = new File([request.resource.blob], request.resource.filename);
+      return apiClient.uploadResource(file);
+    }
+    throw new Error('Resource upload requires blob data');
+  },
+};
 
-export const resourceServiceClient = clientFactory.create(ResourceServiceDefinition, channel);
+// Simplified services that may not be fully implemented yet
+export const shortcutServiceClient = {
+  listShortcuts: () => Promise.resolve([]),
+};
 
-export const shortcutServiceClient = clientFactory.create(ShortcutServiceDefinition, channel);
+export const inboxServiceClient = {
+  listInboxes: () => Promise.resolve([]),
+};
 
-export const inboxServiceClient = clientFactory.create(InboxServiceDefinition, channel);
+export const activityServiceClient = {
+  getActivity: () => Promise.resolve({}),
+};
 
-export const activityServiceClient = clientFactory.create(ActivityServiceDefinition, channel);
+export const webhookServiceClient = {
+  listWebhooks: () => Promise.resolve([]),
+};
 
-export const webhookServiceClient = clientFactory.create(WebhookServiceDefinition, channel);
+export const markdownServiceClient = {
+  parseMarkdown: (request: { markdown: string }) => 
+    Promise.resolve({ nodes: [] }),
+};
 
-export const markdownServiceClient = clientFactory.create(MarkdownServiceDefinition, channel);
-
-export const identityProviderServiceClient = clientFactory.create(IdentityProviderServiceDefinition, channel);
+export const identityProviderServiceClient = {
+  listIdentityProviders: () => Promise.resolve([]),
+};

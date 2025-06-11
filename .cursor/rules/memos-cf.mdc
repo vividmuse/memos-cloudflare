@@ -1,0 +1,10 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+这是一个memos的迁移项目,一定要遵循原来的API格式 保证务必一致!
+前端项目发布到github 自动部署,本地可以尝试部署检查错误,但是不要在本地调试;
+后端直接部署到cloudflare;
+数据库要写为API初始化,这样更方便执行;
+.sql文件 不要有注释,不然wrangler 执行不成功!
